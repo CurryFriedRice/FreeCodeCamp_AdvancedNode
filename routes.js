@@ -16,7 +16,8 @@ function ensureAuthenticated(req,res,next){
       title: 'Connected to Database',
       message: 'Please login',
       showLogin: true,
-      showRegistration: true
+      showRegistration: true,
+      showSocialAuth: true
     });
   });
 
@@ -32,6 +33,19 @@ function ensureAuthenticated(req,res,next){
     req.logout();
     res.redirect("/");
   });
+
+
+  app.route('/chat').get(ensureAuthenticated, (req,res) =>{
+    res.render("/chat", {user: req.user});
+  });
+
+  app.route('/auth/github').get(passport.authenticate('github'));
+
+  app.route('/auth/github/callback').get(passport.authenticate('github',{failureRedirect: '/'}), (req,res) => {
+    req.session.user_id = req.user.id;
+    res.redirect('/chat'); 
+  });
+
 
   //So this effects the path under "register"
   app.route('/register').post((req,res, next) => {//So after registering we want to find a single user

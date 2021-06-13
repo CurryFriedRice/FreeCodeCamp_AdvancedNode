@@ -1,8 +1,9 @@
 const passport = require('passport');
 const LocalStrategy = require('passport-local');
+const GitHubStrategy = require('passport-github').Strategy;
 
 module.exports = function (app,myDataBase){
-   
+  
   app.use((req,res,next) => {
       res.status(404)
         .type("text")
@@ -30,4 +31,37 @@ module.exports = function (app,myDataBase){
       });
     }
   ));
+  passport.use(new GitHubStrategy({
+      clientID: process.env.GITHUB_CLIENT_ID,
+      clientSecret: process.env.GITHUB_CLIENT_SECRET,
+      //This URL is gotten from Github OAuth
+      callbackURL: "https://FreeCodeCampAdvancedNode.curryfriedrice.repl.co/auth/github/callback"
+  }), function(accessToken, refreshToken, profile, cb){
+    //console.log(profile);
+    //So after we get the auth we respond
+    myDataBase.findOneAndUpdate({id:profile.id},
+    {
+      $setOnInsert: {
+        id: profile.id,   //Fetch the ID
+        name: profile.displayName || 'John Doe', //Based off of Profile found
+        photo: profile.photos[0].value || '',    //Then we get their photo to display 
+        email: Array.isArray(profile.emails)     //  
+          ? profile.emails[0].value : 'No public email',
+        created_on: new Date(),
+        provider: profile.provider || ''
+      },
+      $set:{
+        last_login: new Date()
+      },
+      $inc:{
+        login_count: 1
+        }
+      },
+      {upsert: true, new: true},
+      (err,doc) => {
+        return cb(null, doc.value);
+      }
+    );
+  }
+  )
 }
